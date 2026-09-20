@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>metric // aim telemetry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-black: #040405;
+            --panel-bg: rgba(12, 12, 15, 0.85);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.25);
+            --text-main: #f3f3f5;
+            --text-dim: #71717a;
+            --text-muted: #4a4a52;
+            --accent: #6366f1;
+            --accent-hover: #818cf8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --font-head: 'Space Grotesk', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-black); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-head);
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            text-transform: lowercase;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .brand-block {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .brand-title {
+            font-size: 2.6rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            line-height: 1;
+        }
+
+        .brand-title svg {
+            width: 32px;
+            height: 32px;
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+        }
+
+        .sub-tag {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-family: var(--font-code);
+        }
+
+        .header-meta {
+            text-align: right;
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .category-switcher {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .cat-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-dim);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-code);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .cat-btn:hover {
+            color: var(--text-main);
+            border-color: var(--border-hover);
+        }
+
+        .cat-btn.active {
+            background: #ffffff;
+            color: #000000;
+            border-color: #ffffff;
+        }
+
+        .cat-btn.gold-glow {
+            border: 1px solid #fbbf24;
+            color: #fbbf24;
+            background: rgba(251, 191, 36, 0.06);
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.25);
+            animation: goldPulse 2.5s infinite alternate;
+        }
+
+        .cat-btn.gold-glow:hover, .cat-btn.gold-glow.active {
+            background: #fbbf24;
+            color: #040405;
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+        }
+
+        @keyframes goldPulse {
+            0% { box-shadow: 0 0 10px rgba(251, 191, 36, 0.2); }
+            100% { box-shadow: 0 0 22px rgba(251, 191, 36, 0.45); }
+        }
+
+        .utility-panel {
+            display: none;
+            background: var(--panel-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 28px;
+            backdrop-filter: blur(16px);
+            margin-bottom: 35px;
+        }
+
+        .utility-panel.active { display: block; }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 10px;
+            font-family: var(--font-code);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
+
+        @media (max-width: 768px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+        .input-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 18px;
+        }
+
+        .input-card h4 {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-bottom: 14px;
+            font-family: var(--font-code);
+            border-bottom: 1px dashed var(--card-border);
+            padding-bottom: 6px;
+        }
+
+        .field-group { margin-bottom: 12px; }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+            font-family: var(--font-code);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #000000;
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 0.85rem;
+            outline: none;
+            font-family: var(--font-code);
+        }
+
+        input:focus, select:focus { border-color: var(--border-hover); }
+
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            background: #ffffff;
+            color: #000000;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-code);
+            margin-top: 10px;
+        }
+
+        .action-btn:hover {
+            background: #e4e4e7;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .results-box {
+            margin-top: 25px;
+            border-top: 1px solid var(--card-border);
+            padding-top: 20px;
+            display: none;
+        }
+
+        .result-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 18px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--accent);
+        }
+
+        .result-card.success { border-left-color: var(--success); }
+        .result-card.warning { border-left-color: var(--warning); }
+        .result-card.danger { border-left-color: var(--danger); }
+
+        .result-card h5 {
+            font-size: 0.95rem;
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-family: var(--font-code);
+        }
+
+        ul { margin: 0; padding-left: 18px; color: var(--text-dim); font-family: var(--font-code); font-size: 0.8rem; }
+        li { margin-bottom: 4px; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-family: var(--font-code);
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .badge-bad { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .badge-good { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+
+        /* LARGE FULL-SIZE VIDEO EMBED POPUP STYLES */
+        .video-embed-box {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .video-thumbnail-large {
+            width: 100%;
+            max-height: 320px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--card-border);
+        }
+
+        .video-info-large {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .video-title-large {
+            font-size: 0.95rem;
+            color: #ffffff;
+            font-family: var(--font-code);
+            font-weight: 600;
+        }
+
+        .watch-btn-large {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            background: var(--accent);
+            color: #ffffff;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: var(--font-code);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .watch-btn-large:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .about-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 24px;
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-dim);
+        }
+
+        .about-card h3 {
+            color: #ffffff;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+        }
+
+        .about-highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .ecosystem-banner {
+            margin-top: 40px;
+            padding: 24px;
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px dashed rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ecosystem-text {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .ecosystem-subtext {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-family: var(--font-code);
+            margin-top: 4px;
+        }
+
+        .embed-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .embed-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: #111318;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: #fff;
+            text-decoration: none;
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .embed-btn:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .embed-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="container">
+        <header>
+            <div class="brand-block">
+                <div class="brand-title">
+                    <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M 20 70 L 80 10 L 90 20 L 30 80 Z" fill="rgba(255,255,255,0.05)" />
+                        <path d="M 35 55 L 42 62" />
+                        <path d="M 45 45 L 50 50" />
+                        <path d="M 55 35 L 62 42" />
+                        <path d="M 65 25 L 70 30" />
+                    </svg>
+                    metric
+                </div>
+                <div class="sub-tag">aim stats & training tools</div>
+            </div>
+            <div class="header-meta">
+                v2.0 // stats analyzer<br>
+                performance breakdown
+            </div>
+        </header>
+
+        <div class="category-switcher">
+            <button class="cat-btn active" onclick="switchTab('analyzer', this)">stats analyzer</button>
+            <button class="cat-btn" onclick="switchTab('routine', this)">routine generator</button>
+            <button class="cat-btn gold-glow" onclick="switchTab('about', this)">about us</button>
+        </div>
+
+        <!-- TAB 1: STATS ANALYZER WITH LARGE EMBEDDED VIDEOS -->
+        <div id="tab-analyzer" class="utility-panel active">
+            <div class="panel-title">
+                <span>session stats analyzer</span>
+                <span style="font-size: 0.75rem; color: var(--text-dim);">pick scenario & input metrics</span>
+            </div>
+
+            <div class="input-card" style="margin-bottom: 20px;">
+                <h4>select scenario category & scenario</h4>
+                <div class="grid-2">
+                    <div class="field-group">
+                        <label>category</label>
+                        <select id="scenarioCategory" onchange="updateScenarioList()">
+                            <option value="clicking">clicking</option>
+                            <option value="tracking">tracking</option>
+                            <option value="switching">switching</option>
+                            <option value="control">control tracking</option>
+                            <option value="reactive">reactive tracking</option>
+                            <option value="flick">flick tech</option>
+                            <option value="timing">click timing</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>scenario name</label>
+                        <select id="scenarioName">
+                            <!-- populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="input-card">
+                    <h4>core performance</h4>
+                    <div class="field-group">
+                        <label>score</label>
+                        <input type="number" id="statScore" value="1250">
+                    </div>
+                    <div class="field-group">
+                        <label>accuracy (%)</label>
+                        <input type="number" step="0.1" id="statAcc" value="88.5">
+                    </div>
+                    <div class="field-group">
+                        <label>time to kill / ttk (ms)</label>
+                        <input type="number" id="statTTK" value="310">
+                    </div>
+                </div>
+
+                <div class="input-card">
+                    <h4>damage metrics</h4>
+                    <div class="field-group">
+                        <label>damage (done / total)</label>
+                        <input type="number" id="statDamage" value="4500">
+                    </div>
+                    <div class="field-group">
+                        <label>damage efficiency (%)</label>
+                        <input type="number" step="0.1" id="statDmgEff" value="78.0">
+                    </div>
+                    <div class="field-group">
+                        <label>kills / targets destroyed</label>
+                        <input type="number" id="statKills" value="42">
+                    </div>
+                </div>
+            </div>
+
+            <button class="action-btn" onclick="runComprehensiveAnalysis()">analyze selected scenario stats</button>
+
+            <div id="analyzerResults" class="results-box">
+                <div class="result-card" id="analysisCard" style="border-left-color: var(--accent);">
+                    <span class="badge badge-good" id="analysisBadge">status ok</span>
+                    <h5>telemetry verdict for <span id="selectedScenarioLabel" style="color:var(--accent);">scenario</span></h5>
+                    <ul id="analysisVerdictList"></ul>
+                </div>
+                
+                <!-- FULL-SIZE VIDEO EMBED POPUP CONTAINER -->
+                <div id="categoryVideoEmbed"></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ROUTINE GENERATOR -->
+        <div id="tab-routine" class="utility-panel">
+            <div class="panel-title">
+                <span>routine generator</span>
+                <span style="font-size: 0.75rem; color: var(--text-dim);">build custom scenario lists</span>
+            </div>
+            <div class="grid-3">
+                <div class="input-card">
+                    <h4>skill level</h4>
+                    <div class="field-group">
+                        <label>current rank</label>
+                        <select id="playerRank">
+                            <option value="beginner">beginner / silver</option>
+                            <option value="intermediate">intermediate / plat</option>
+                            <option value="advanced">advanced / diamond</option>
+                            <option value="elite">elite / master</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>main game</label>
+                        <select id="targetGameFocus">
+                            <option value="tacfps">tactical shooter (val/cs2)</option>
+                            <option value="tracking">tracking focus (apex/quake)</option>
+                            <option value="hybrid">arena / mixed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-card">
+                    <h4>focus area</h4>
+                    <div class="field-group">
+                        <label>main weakness</label>
+                        <select id="weaknessFocus">
+                            <option value="clicking">static clicking</option>
+                            <option value="dynamic">dynamic clicking</option>
+                            <option value="smoothness">tracking smoothness</option>
+                            <option value="switching">target switching</option>
+                            <option value="balanced">balanced overall</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>training tool</label>
+                        <select id="aimPlatform">
+                            <option value="kovaaks">kovaak's</option>
+                            <option value="aimlabs">aimlabs</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-card">
+                    <h4>duration</h4>
+                    <div class="field-group">
+                        <label>session length</label>
+                        <select id="sessionTime">
+                            <option value="warmup">15 mins warm-up</option>
+                            <option value="standard">45 mins routine</option>
+                            <option value="intensive">90 mins deep practice</option>
+                        </select>
+                    </div>
+                    <button class="action-btn" style="margin-top:22px;" onclick="generateCustomRoutine()">generate playlist</button>
+                </div>
+            </div>
+
+            <div id="customRoutineOutput" class="results-box">
+                <div class="result-card success" style="border-left-color: var(--accent);">
+                    <span class="badge badge-good" style="background: rgba(99, 102, 241, 0.15); color: var(--accent);">playlist ready</span>
+                    <h5>custom routine output</h5>
+                    <ul id="routineManifestList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: ABOUT US -->
+        <div id="tab-about" class="utility-panel">
+            <div class="panel-title">
+                <span>about us</span>
+                <span style="font-size: 0.75rem; color: var(--text-dim);">meet the developer</span>
+            </div>
+            <div class="about-card">
+                <h3>created by avyxl</h3>
+                <p>metric was built by <span class="about-highlight">avyxl</span>, a passionate c++, python, and lua developer who wanted clean, fast tools for the competitive fps community without any bloated or unnecessary filler.</p>
+                <div style="margin-top: 16px;">
+                    <span style="color: var(--text-dim);">discord:</span> <span style="color: #ffffff;">doorsondoors</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ECOSYSTEM CROSS-PROMOTION -->
+        <div class="ecosystem-banner">
+            <div>
+                <div class="ecosystem-text">liked metric? check out our other tools.</div>
+                <div class="ecosystem-subtext">visit our aim hub and hardware index.</div>
+            </div>
+            <div class="embed-buttons">
+                <a href="https://avyxl.github.io/arc/" target="_blank" class="embed-btn">
+                    <svg viewBox="0 0 24 24"><path d="M12 2L2 22h20L12 2z"/></svg>
+                    arc hub
+                </a>
+                <a href="https://avyxl.github.io/loadout/" target="_blank" class="embed-btn">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 12h10"/></svg>
+                    loadout
+                </a>
+            </div>
+        </div>
+
+        <footer>
+            <span>metric // aim tools</span>
+            <span>aim stats & routines</span>
+        </footer>
+    </div>
+
+    <script>
+        const SCENARIOS_DB = {
+            clicking: [
+                "VT Pasu Rasp Intermediate", "VT Bounceshot Intermediate", "VT Pasu Novice S5", "VT Popcorn Novice S5",
+                "VT 1w5ts Rasp Intermediate", "VT Multiclick 120 Intermediate", "VT 1w4ts Novice S5", "VT ww5t Novice S5",
+                "VT Frogtagon Novice S5", "VT Floating Heads Novice S5", "VT AngleStrafe Intermediate", "VT ArcStrafe Intermediate"
+            ],
+            tracking: [
+                "VT Smoothbot Intermediate", "VT PreciseOrb Intermediate", "VT PGT Novice S5", "VT Snake Track Novice S5",
+                "VT Plaza Intermediate", "VT Air Intermediate", "VT Aether Novice S5", "VT Ground Novice S5",
+                "VT Raw Control Novice S5", "VT Controlsphere Novice S5", "VT PatStrafe Intermediate", "VT AirStrafe Intermediate"
+            ],
+            switching: [
+                "VT psalmTS Intermediate", "VT skyTS Intermediate", "VT DotTS Novice S5", "VT EddieTS Novice S5",
+                "VT evaTS Intermediate", "VT bounceTS Intermediate", "VT DriftTS Novice S5", "VT FlyTS Novice S5",
+                "VT ControlTS Novice S5", "VT Penta Bounce Novice S5"
+            ],
+            control: [
+                "Smoothsphere Viscose", "Whisphere Viscose", "SmoothBot Perfected", "Leapstrafes Control wobin",
+                "Controlsphere SuperbAim Viscose", "VT Controlsphere Viscose", "Air Angelic 4 Voltaic Easy 90%",
+                "cloverRawControl Viscose 50cm", "Flower 50cm", "VT PreciseOrb Intermediate 15% Slower",
+                "Air CELESTIAL No UFO Medium", "RawControlSphere"
+            ],
+            reactive: [
+                "Ground Plaza Sparky V3", "Air Spectral Easy", "VT Aether Novice S5 Hard Bot 1 90%",
+                "Plink Palace Easy", "Air Pure Medium", "Air Voltaic Invincible 4 Medium"
+            ],
+            flick: [
+                "ww4t Voltaic", "voxTargetSwitch 2", "aimerz+ Static Switching 5 Bot Slightly Larger",
+                "1w6ts reload v2", "beanTS", "StaticSwitchingVox Small", "1w2ts reload smallflicks slightly larger",
+                "eth Pasu Micro Medium", "waldoTS Intermediate", "kinTS Voltaic Easy", "domiSwitch Easy", "B180T Voltaic Easy"
+            ],
+            timing: [
+                "Pasu Voltaic Reload Easy", "VT Bounceshot Viscose Medium", "CatClick Medium",
+                "1w3ts Pasu Perfected Micro Goated Larger", "Popcorn MV Medium", "skyClick Goated Medium",
+                "VoxTS Click Medium", "VT Floating Heads Viscose Medium", "psalmTS Viscose Click"
+            ]
+        };
+
+        const CATEGORY_VIDEOS = {
+            tracking: {
+                title: "the complete kovaak tracking guide + routines + settings (mattyow)",
+                url: "http://www.youtube.com/watch?v=_Q9T45rimwM",
+                id: "_Q9T45rimwM"
+            },
+            control: {
+                title: "speed matching in precise tracking (mattyow)",
+                url: "http://www.youtube.com/watch?v=-7n6q33We28",
+                id: "-7n6q33We28"
+            },
+            reactive: {
+                title: "bounce 180 tracking (mattyow)",
+                url: "http://www.youtube.com/watch?v=CccrDh-2d98",
+                id: "CccrDh-2d98"
+            },
+            switching: {
+                title: "kovaak target switching routine & guide (stridah)",
+                url: "http://www.youtube.com/watch?v=6c8-uEXf2Cc",
+                id: "6c8-uEXf2Cc"
+            },
+            flick: {
+                title: "speed target switching guide (riddbtw)",
+                url: "http://www.youtube.com/watch?v=4cq4_4LtekU",
+                id: "4cq4_4LtekU"
+            },
+            timing: {
+                title: "i made the new best way to train your aim [dynamic & switching] (viscose)",
+                url: "http://www.youtube.com/watch?v=VARQNEdQYbw",
+                id: "VARQNEdQYbw"
+            },
+            clicking: {
+                title: "how to pasu (mattyow)",
+                url: "http://www.youtube.com/watch?v=c1bze50DFus",
+                id: "c1bze50DFus"
+            }
+        };
+
+        function updateScenarioList() {
+            const cat = document.getElementById('scenarioCategory').value;
+            const select = document.getElementById('scenarioName');
+            select.innerHTML = '';
+            
+            const list = SCENARIOS_DB[cat] || [];
+            list.forEach(scen => {
+                let opt = document.createElement('option');
+                opt.value = scen;
+                opt.textContent = scen;
+                select.appendChild(opt);
+            });
+        }
+
+        updateScenarioList();
+
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.utility-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        function runComprehensiveAnalysis() {
+            const cat = document.getElementById('scenarioCategory').value;
+            const scenario = document.getElementById('scenarioName').value;
+            const score = parseFloat(document.getElementById('statScore').value);
+            const acc = parseFloat(document.getElementById('statAcc').value);
+            const ttk = parseFloat(document.getElementById('statTTK').value);
+            const damage = parseFloat(document.getElementById('statDamage').value);
+            const dmgEff = parseFloat(document.getElementById('statDmgEff').value);
+            const kills = parseFloat(document.getElementById('statKills').value);
+
+            document.getElementById('selectedScenarioLabel').textContent = scenario;
+
+            let verdicts = [];
+            let statusClass = "result-card success";
+            let badgeClass = "badge badge-good";
+            let badgeText = "looking good";
+
+            if (acc < 85 || ttk > 320) {
+                statusClass = "result-card danger";
+                badgeClass = "badge badge-bad";
+                badgeText = "issue found";
+                verdicts.push(`low efficiency on ${scenario}: accuracy (${acc}%) or ttk (${ttk}ms) indicates hesitation or over-flicking out of dead zones.`);
+            }
+
+            if (dmgEff < 75) {
+                statusClass = "result-card warning";
+                badgeClass = "badge badge-bad";
+                badgeText = "issue found";
+                verdicts.push(`damage efficiency (${dmgEff}%) is sub-optimal. check your target pacing and consistency.`);
+            }
+
+            if (verdicts.length === 0) {
+                verdicts.push(`solid performance across all metrics for ${scenario}. output efficiency, score (${score}), and kills (${kills}) match optimal benchmarks.`);
+            }
+
+            document.getElementById('analysisCard').className = statusClass;
+            document.getElementById('analysisBadge').className = badgeClass;
+            document.getElementById('analysisBadge').textContent = badgeText;
+
+            renderList('analysisVerdictList', verdicts);
+            document.getElementById('analyzerResults').style.display = 'block';
+
+            // RENDER FULL-SIZE VIDEO EMBED POPUP
+            renderVideoEmbed(cat);
+        }
+
+        function renderVideoEmbed(cat) {
+            const container = document.getElementById('categoryVideoEmbed');
+            const videoData = CATEGORY_VIDEOS[cat] || CATEGORY_VIDEOS['clicking'];
+
+            container.innerHTML = `
+                <div class="video-embed-box">
+                    <img src="https://img.youtube.com/vi/${videoData.id}/maxresdefault.jpg" class="video-thumbnail-large" alt="thumbnail" onerror="this.src='https://img.youtube.com/vi/${videoData.id}/hqdefault.jpg'">
+                    <div class="video-info-large">
+                        <div class="video-title-large">watch guide: ${videoData.title}</div>
+                        <a href="${videoData.url}" target="_blank" class="watch-btn-large">
+                            watch this!
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateCustomRoutine() {
+            const platform = document.getElementById('aimPlatform').value;
+            const weakness = document.getElementById('weaknessFocus').value;
+            const time = document.getElementById('sessionTime').value;
+
+            let manifest = [];
+            
+            if (platform === 'kovaaks') {
+                if (weakness === 'clicking') manifest.push("VT 1w4ts Novice S5", "VT Multiclick 120 Intermediate", "1wall 6targets small");
+                else if (weakness === 'dynamic') manifest.push("VT Pasu Rasp Intermediate", "VT Bounceshot Intermediate", "Popcorn MV Medium");
+                else if (weakness === 'smoothness') manifest.push("VT Smoothbot Intermediate", "SmoothBot Perfected", "VT Controlsphere Intermediate");
+                else if (weakness === 'switching') manifest.push("VT psalmTS Intermediate", "VT skyTS Intermediate", "voxTargetSwitch 2");
+                else manifest.push("VT 1w5ts Rasp Intermediate", "VT Smoothbot Intermediate", "VT Pasu Rasp Intermediate", "VT psalmTS Intermediate");
+            } else {
+                if (weakness === 'clicking') manifest.push("sixshot ultimate", "microflex standard", "spidershot precision");
+                else if (weakness === 'dynamic') manifest.push("motionshot precision", "multishot ultimate", "flick 180");
+                else if (weakness === 'smoothness') manifest.push("sphere track ultimate", "switch track standard", "smoothness task");
+                else if (weakness === 'switching') manifest.push("spidershot 180", "kinetargetswitch aimlabs", "microshot speed");
+                else manifest.push("sixshot ultimate", "sphere track", "motionshot", "spidershot");
+            }
+
+            let formattedManifest = [];
+            let reps = time === 'warmup' ? 'x2' : (time === 'standard' ? 'x5' : 'x10');
+            
+            formattedManifest.push(`[ phase 1 ] - warm-up & grip check`);
+            formattedManifest.push(`- freeplay tracking (${time === 'warmup' ? '2 mins' : '5 mins'})`);
+            
+            formattedManifest.push(`[ phase 2 ] - target focus: ${weakness}`);
+            manifest.forEach(scen => {
+                formattedManifest.push(`- ${scen} (${reps})`);
+            });
+
+            renderList('routineManifestList', formattedManifest);
+            document.getElementById('customRoutineOutput').style.display = 'block';
+        }
+
+        function renderList(id, items) {
+            const el = document.getElementById(id);
+            el.innerHTML = '';
+            items.forEach(i => {
+                let li = document.createElement('li');
+                li.textContent = i;
+                el.appendChild(li);
+            });
+        }
+
+        const bgCanvas = document.getElementById('bg-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        for (let i = 0; i < 45; i++) {
+            particles.push({
+                x: Math.random() * bgCanvas.width,
+                y: Math.random() * bgCanvas.height,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4,
+                radius: Math.random() * 1.5 + 0.5
+            });
+        }
+
+        function animateBg() {
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            bgCtx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0) p.x = bgCanvas.width;
+                if (p.x > bgCanvas.width) p.x = 0;
+                if (p.y < 0) p.y = bgCanvas.height;
+                if (p.y > bgCanvas.height) p.y = 0;
+
+                bgCtx.beginPath();
+                bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                bgCtx.fill();
+
+                for (let j = index + 1; j < particles.length; j++) {
+                    const p2 = particles[j];
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < 120) {
+                        bgCtx.beginPath();
+                        bgCtx.moveTo(p.x, p.y);
+                        bgCtx.lineTo(p2.x, p2.y);
+                        bgCtx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(animateBg);
+        }
+
+        animateBg();
+    </script>
+</body>
+</html>
